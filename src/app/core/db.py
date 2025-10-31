@@ -32,4 +32,37 @@ def init_db(drop: bool = False) -> None:
         Base.metadata.drop_all(bind = engine)
     Base.metadata.create_all(bind = engine)
     
+# add sessions
+from contextlib import contextmanager
+from typing import Iterator
+from sqlalchemy.orm import Session, sessionmaker
+
+_SessionLocal = None 
+
+def get_sessionmaker() -> sessionmaker:
+    global _SessionLocal
+    if _SessionLocal is None:
+        # create new Session objects 
+        _SessionLocal = sessionmaker(bind = get_engine(), autoflush = False, autocommit = False, future = True)
+    return _SessionLocal
+
+@contextmanager
+def session_scope() -> Iterator[Session]:
+    """
+    Provide a transactional scope around a series of operations.
+    Usage:
+        with session_scope() as s:
+            s.add(Card())
+            ...
+    """
+    SessionLocal = get_sessionmaker()
+    session: Session = SessionLocal()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
     
